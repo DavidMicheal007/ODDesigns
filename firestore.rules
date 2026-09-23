@@ -1,0 +1,127 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Fields: uid, displayName, email, photoURL, role, walletBalance, specialization, reputationScore, bio, socialLinks, createdAt
+    //
+    // Collection: designs
+    // Fields: id, authorId, authorName, title, description, imageUrl, prompt, price, status, createdAt, tags
+    //
+    // Collection: marketplace
+    // Fields: designId, sellerId, price, listedAt
+    //
+    // Collection: transactions
+    // Fields: userId, amount, type, description, timestamp
+    //
+    // Collection: collaborations
+    // Fields: id, authorId, title, content, type, createdAt
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isDocOwner() {
+      return isAuthenticated() && request.auth.uid == resource.data.authorId;
+    }
+
+    function isValidEmail(email) {
+      return email is string && email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['uid', 'email', 'role', 'specialization', 'reputationScore']) &&
+             data.uid == request.auth.uid &&
+             isValidEmail(data.email) &&
+             data.role in ['artist', 'brand_manager', 'admin'] &&
+             data.specialization in ['Streetwear', 'Minimalism', 'Typography'] &&
+             (data.walletBalance is number && data.walletBalance >= 0) &&
+             (data.reputationScore is number);
+    }
+
+    function isValidDesign(data) {
+      return data.keys().hasAll(['authorId', 'imageUrl', 'status']) &&
+             data.authorId == request.auth.uid &&
+             data.imageUrl is string &&
+             data.status in ['draft', 'published', 'sold'];
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && 
+             (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+              request.auth.token.email == "ChuwangDavidMicheal@gmail.com");
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      allow read: if isAuthenticated(); // Allow reading other profiles for marketplace/collabs
+      allow create: if isOwner(userId) && isValidUser(request.resource.data);
+      allow update: if isAuthenticated() && (
+                      (isOwner(userId) && isValidUser(request.resource.data) && request.resource.data.role == resource.data.role) ||
+                      (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['walletBalance', 'reputationScore']))
+                    );
+    }
+
+    match /designs/{designId} {
+      allow read: if true; // Publicly readable
+      allow create: if isAuthenticated() && isValidDesign(request.resource.data);
+      allow update: if (isDocOwner() && isValidDesign(request.resource.data)) ||
+                    (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status']) && request.resource.data.status == 'sold');
+      allow delete: if isDocOwner() || isAdmin();
+    }
+
+    match /marketplace/{itemId} {
+      allow read: if true;
+      allow create: if isAuthenticated() && request.resource.data.sellerId == request.auth.uid;
+      allow update, delete: if isAuthenticated() && (resource.data.sellerId == request.auth.uid || isAdmin());
+    }
+
+    match /transactions/{transactionId} {
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+    }
+
+    match /collaborations/{collabId} {
+      allow read: if true;
+      allow create: if isAuthenticated() && request.resource.data.authorId == request.auth.uid;
+      allow update, delete: if isAuthenticated() && (resource.data.authorId == request.auth.uid || isAdmin());
+    }
+
+    match /reviews/{reviewId} {
+      allow read: if true;
+      allow create: if isAuthenticated() && 
+                    request.resource.data.userId == request.auth.uid &&
+                    request.resource.data.rating >= 1 && request.resource.data.rating <= 5;
+      allow update, delete: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+    }
+
+    match /warRooms/{warRoomId} {
+      allow read: if isAuthenticated() && request.auth.uid in resource.data.participants;
+      allow create: if isAuthenticated();
+      allow update: if isAuthenticated() && request.auth.uid in resource.data.participants;
+
+      match /comments/{commentId} {
+        allow read: if isAuthenticated();
+        allow create: if isAuthenticated();
+        allow delete: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+      }
+    }
+  }
+}

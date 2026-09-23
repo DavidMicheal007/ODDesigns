@@ -1,0 +1,168 @@
+{
+  "entities": {
+    "User": {
+      "title": "User Profile",
+      "description": "Stores user profile information, role, and wallet balance.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "displayName": { "type": "string" },
+        "email": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "role": { "type": "string", "enum": ["artist", "brand_manager", "admin"] },
+        "walletBalance": { "type": "number" },
+        "specialization": { "type": "string", "enum": ["Streetwear", "Minimalism", "Typography"] },
+        "reputationScore": { "type": "number" },
+        "bio": { "type": "string" },
+        "socialLinks": {
+          "type": "object",
+          "properties": {
+            "x": { "type": "string" },
+            "instagram": { "type": "string" },
+            "portfolio": { "type": "string" }
+          }
+        },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "role", "specialization", "reputationScore"]
+    },
+    "Design": {
+      "title": "Clothing Design",
+      "description": "Stores generated or uploaded clothing designs.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "authorId": { "type": "string" },
+        "authorName": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "imageUrl": { "type": "string" },
+        "prompt": { "type": "string" },
+        "price": { "type": "number" },
+        "status": { "type": "string", "enum": ["draft", "published", "sold"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "tags": { "type": "array", "items": { "type": "string" } }
+      },
+      "required": ["authorId", "imageUrl", "status"]
+    },
+    "MarketplaceItem": {
+      "title": "Marketplace Listing",
+      "description": "A design listed for sale in the marketplace.",
+      "type": "object",
+      "properties": {
+        "designId": { "type": "string" },
+        "sellerId": { "type": "string" },
+        "price": { "type": "number" },
+        "listedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["designId", "sellerId", "price"]
+    },
+    "Transaction": {
+      "title": "Wallet Transaction",
+      "description": "Records of earnings and payments.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "amount": { "type": "number" },
+        "type": { "type": "string", "enum": ["credit", "debit"] },
+        "description": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "amount", "type"]
+    },
+    "Collaboration": {
+      "title": "Collaboration Post",
+      "description": "Posts for finding collaborators (artists or influencers).",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "authorId": { "type": "string" },
+        "title": { "type": "string" },
+        "content": { "type": "string" },
+        "type": { "type": "string", "enum": ["looking_for_artist", "looking_for_brand", "looking_for_influencer"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["authorId", "title", "type"]
+    },
+    "Review": {
+      "title": "Design Review",
+      "description": "Ratings and reviews for designs.",
+      "type": "object",
+      "properties": {
+        "designId": { "type": "string" },
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "userPhoto": { "type": "string" },
+        "rating": { "type": "number" },
+        "comment": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["designId", "userId", "rating", "comment"]
+    },
+    "WarRoom": {
+      "title": "Collaboration War Room",
+      "description": "A real-time collaborative design session.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "designId": { "type": "string" },
+        "hostId": { "type": "string" },
+        "participants": { "type": "array", "items": { "type": "string" } },
+        "status": { "type": "string", "enum": ["active", "archived"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["designId", "hostId", "participants", "status"]
+    },
+    "WarRoomComment": {
+      "title": "War Room Pinned Comment",
+      "description": "A pinned comment on a design in a war room.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "warRoomId": { "type": "string" },
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "userPhoto": { "type": "string" },
+        "text": { "type": "string" },
+        "x": { "type": "number" },
+        "y": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["warRoomId", "userId", "text", "x", "y"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profiles and wallet info."
+    },
+    "/designs/{designId}": {
+      "schema": "Design",
+      "description": "Clothing designs."
+    },
+    "/marketplace/{itemId}": {
+      "schema": "MarketplaceItem",
+      "description": "Marketplace listings."
+    },
+    "/transactions/{transactionId}": {
+      "schema": "Transaction",
+      "description": "Wallet transaction history."
+    },
+    "/collaborations/{collabId}": {
+      "schema": "Collaboration",
+      "description": "Collaboration opportunities."
+    },
+    "/reviews/{reviewId}": {
+      "schema": "Review",
+      "description": "Design reviews and ratings."
+    },
+    "/warRooms/{warRoomId}": {
+      "schema": "WarRoom",
+      "description": "Collaborative design sessions."
+    },
+    "/warRooms/{warRoomId}/comments/{commentId}": {
+      "schema": "WarRoomComment",
+      "description": "Pinned comments in a war room."
+    }
+  }
+}
